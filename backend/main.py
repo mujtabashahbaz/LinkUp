@@ -167,6 +167,26 @@ def update_me(data: ProfileIn, user: User = Depends(current_user), session: Sess
     session.commit(); session.refresh(user)
     return public_user(user)
 
+
+@app.delete("/me")
+def delete_me(user: User = Depends(current_user), session: Session = Depends(db)):
+    session.query(Like).filter(Like.user_id == user.id).delete(synchronize_session=False)
+    session.query(Comment).filter(Comment.user_id == user.id).delete(synchronize_session=False)
+
+    post_ids = [p.id for p in session.query(Post).filter(Post.author_id == user.id).all()]
+    if post_ids:
+        session.query(Like).filter(Like.post_id.in_(post_ids)).delete(synchronize_session=False)
+        session.query(Comment).filter(Comment.post_id.in_(post_ids)).delete(synchronize_session=False)
+        session.query(Post).filter(Post.id.in_(post_ids)).delete(synchronize_session=False)
+
+    session.query(Connection).filter(
+        or_(Connection.requester_id == user.id, Connection.receiver_id == user.id)
+    ).delete(synchronize_session=False)
+
+    session.delete(user)
+    session.commit()
+    return {"ok": True}
+
 @app.get("/users")
 def users(user: User = Depends(current_user), session: Session = Depends(db)):
     rows = session.query(User).filter(User.id != user.id).order_by(User.name).all()
@@ -248,6 +268,20 @@ def create_post(data: PostIn, user: User = Depends(current_user), session: Sessi
     post = Post(author_id=user.id, body=body)
     session.add(post); session.commit(); session.refresh(post)
     return {"id": post.id}
+
+
+@app.delete("/posts/{post_id}")
+def delete_post(post_id: int, user: User = Depends(current_user), session: Session = Depends(db)):
+    post = session.get(Post, post_id)
+    if not post:
+        raise HTTPException(404, "Post not found")
+    if post.author_id != user.id:
+        raise HTTPException(403, "You can only delete your own posts")
+    session.query(Like).filter(Like.post_id == post_id).delete(synchronize_session=False)
+    session.query(Comment).filter(Comment.post_id == post_id).delete(synchronize_session=False)
+    session.delete(post)
+    session.commit()
+    return {"ok": True}
 
 @app.post("/posts/{post_id}/like")
 def toggle_like(post_id: int, user: User = Depends(current_user), session: Session = Depends(db)):

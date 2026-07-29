@@ -9,6 +9,8 @@ A GitHub-ready full-stack social/professional networking MVP.
 - Create posts
 - Feed
 - Likes and comments
+- Delete your own posts
+- Permanently delete your account and associated data
 - Discover users
 - Send and accept connection requests
 - Responsive React interface

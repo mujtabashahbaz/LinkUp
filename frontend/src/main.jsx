@@ -100,7 +100,7 @@ function Feed({me, setPage}) {
         <div className="post-head"><Avatar user={p.author}/><div><b>{p.author.name}</b><div className="muted small">{p.author.headline}</div><div className="muted tiny">{new Date(p.created_at).toLocaleString()}</div></div></div>
         <div className="post-body">{p.body}</div>
         <div className="social-count">{p.likes} like{p.likes!==1?"s":""} · {p.comments.length} comment{p.comments.length!==1?"s":""}</div>
-        <div className="actions"><button onClick={()=>like(p.id)}>{p.liked?"♥":"♡"} Like</button><button onClick={e=>e.currentTarget.closest("article").querySelector("input").focus()}>◯ Comment</button></div>
+        <div className="actions"><button onClick={()=>like(p.id)}>{p.liked?"♥":"♡"} Like</button><button onClick={e=>e.currentTarget.closest("article").querySelector("input").focus()}>◯ Comment</button>{p.author.id===me.id && <button className="danger-action" onClick={async()=>{if(confirm("Delete this post? This cannot be undone.")){await api(`/posts/${p.id}`,{method:"DELETE"});load();}}}>Delete</button>}</div>
         <div className="comments">
           {p.comments.map(c=><div className="comment" key={c.id}><Avatar user={c.author}/><div className="bubble"><b>{c.author.name}</b><div>{c.body}</div></div></div>)}
           <form className="comment-form" onSubmit={e=>comment(p.id,e)}><Avatar user={me}/><input name="comment" placeholder="Add a comment..."/></form>
@@ -132,6 +132,13 @@ function Network() {
 function Profile({me,setMe}) {
   const [edit,setEdit]=useState(false), [form,setForm]=useState(me);
   async function save(e){e.preventDefault();const u=await api("/me",{method:"PUT",body:JSON.stringify(form)});setMe(u);setEdit(false);}
+  async function deleteAccount(){
+    if(!confirm("Delete your LinkUp account? Your posts, comments, likes and connections will also be deleted.")) return;
+    if(prompt('Type DELETE to permanently delete your account.') !== "DELETE") return;
+    await api("/me",{method:"DELETE"});
+    localStorage.removeItem("token");
+    setMe(null);
+  }
   return <main className="single"><div className="card profile-page"><div className="profile-cover"></div><Avatar user={me} large/>
     {!edit ? <><button className="edit" onClick={()=>setEdit(true)}>✎ Edit profile</button><h1>{me.name}</h1><h3>{me.headline}</h3><div className="muted">{me.location}</div><hr/><h2>About</h2><p>{me.about || "Add an about section to tell people about yourself."}</p></> :
     <form className="profile-form" onSubmit={save}><h2>Edit profile</h2>
@@ -139,6 +146,7 @@ function Profile({me,setMe}) {
       <label>About<textarea value={form.about||""} onChange={e=>setForm({...form,about:e.target.value})}/></label>
       <div className="row end"><button type="button" onClick={()=>setEdit(false)}>Cancel</button><button className="primary">Save</button></div>
     </form>}
+    {!edit && <div className="danger-zone"><h2>Account</h2><p className="muted">Permanently delete your account and associated data.</p><button className="danger-button" onClick={deleteAccount}>Delete account</button></div>}
   </div></main>
 }
 
